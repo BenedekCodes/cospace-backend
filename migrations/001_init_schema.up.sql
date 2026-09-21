@@ -1,19 +1,19 @@
 use cospace;
 
-CREATE TABLE teams (
+CREATE TABLE if not exists teams (
     id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL UNIQUE,
     department VARCHAR(100) NOT NULL
 );
 
-CREATE TABLE rooms (
+CREATE TABLE if not exists rooms (
     id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL UNIQUE,
     floor INT NOT NULL,
     capacity INT NOT NULL
 );
 
-CREATE TABLE users (
+CREATE TABLE if not exists users (
     id INT PRIMARY KEY AUTO_INCREMENT,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
@@ -26,13 +26,13 @@ CREATE TABLE users (
         ON DELETE SET NULL
 );
 
-CREATE TABLE desks (
+CREATE TABLE if not exists desks (
     id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(255) NOT NULL UNIQUE,
     floor INT NOT NULL
 );
 
-CREATE TABLE bookings (
+CREATE TABLE if not exists bookings (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     desk_id INT NOT NULL,
@@ -44,4 +44,4 @@ CREATE TABLE bookings (
 
     FOREIGN KEY (desk_id) REFERENCES desks(id)
         on DELETE CASCADE
-);teamsteams
+);
