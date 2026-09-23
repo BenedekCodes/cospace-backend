@@ -1,4 +1,5 @@
-import { BookingRepository, Booking } from "../repositories/booking.repository";
+import { BookingRepository } from "../repositories/booking.repository";
+import { Booking } from "../schemas/booking.schema";
 
 export class ConflictError extends Error {}
 
