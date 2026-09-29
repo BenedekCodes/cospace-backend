@@ -2,13 +2,14 @@ import express, { Request, Response } from "express";
 import bookingsRouter from "./routes/booking.routes";
 import { logger } from "./middleware/logger";
 import { errorHandler } from "./middleware/errorHandler";
+import { HttpStatus } from "./constants/httpStatus";
 
 const app = express();
 app.use(express.json());
 app.use(logger);
 
 app.get("/", (req: Request, res: Response) => {
-  res.status(200).json({ status: "active", message: "CoSpace API is running" });
+  res.status(HttpStatus.OK).json({ status: "active", message: "CoSpace API is running" });
 });
 
 app.use("/bookings", bookingsRouter);
