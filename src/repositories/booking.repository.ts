@@ -1,10 +1,4 @@
-export interface Booking {
-  id: string;
-  desk: string;
-  floor: number;
-  date: string;
-  active: boolean;
-}
+import { Booking } from "../schemas/booking.schema";
 
 export class BookingRepository {
   private bookings: Booking[] = [
@@ -19,6 +13,14 @@ export class BookingRepository {
 
   findById(id: string): Booking | undefined {
     return this.bookings.find((b) => b.id === id);
+  }
+
+  findPaginated(skip: number, limit: number): Booking[] {
+    return this.bookings.slice(skip, skip + limit);
+  }
+
+  count(): number {
+    return this.bookings.length;
   }
 
   create(booking: Booking): Booking {

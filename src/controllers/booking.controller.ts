@@ -1,12 +1,22 @@
 import { Request, Response } from "express";
-import { BookingService, ConflictError } from "../services/booking.service";
+import { BookingService, ConflictError, NotFoundError } from "../services/booking.service";
 
 export class BookingController {
   private readonly service = new BookingService();
 
   // Arrow properties keep `this` bound when passed directly as Express route handlers.
   getAll = (req: Request, res: Response): void => {
-    res.status(200).json(this.service.findAll());
+    var page = parseInt(req.query.page as string, 10) || 1;
+    var limit = parseInt(req.query.limit as string, 10) || 10;
+    // Ensure page and limit are positive integers
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 10;
+    // Cap page size so clients can't force the whole dataset into one response
+    const MAX_LIMIT = 50;
+    if (limit > MAX_LIMIT) limit = MAX_LIMIT;
+
+    const result = this.service.getPaginatedShifts(page, limit);
+    res.status(200).json(result);
   };
 
   getById = (req: Request<{ id: string }>, res: Response): void => {
@@ -35,12 +45,6 @@ export class BookingController {
 
     try {
       const updated = this.service.update(id, req.body);
-
-      if (!updated) {
-        res.status(404).json({ error: "Booking not found" });
-        return;
-      }
-
       res.status(200).json(updated);
     } catch (err) {
       this.handleError(err, res);
@@ -49,14 +53,14 @@ export class BookingController {
 
   patch = (req: Request<{ id: string }>, res: Response): void => {
     const { id } = req.params;
-    const booking = this.service.findById(id);
-
-    if (!booking) {
-      res.status(404).json({ error: "Booking not found" });
-      return;
-    }
 
     try {
+      const booking = this.service.findById(id);
+
+      if (!booking) {
+        throw new NotFoundError("Booking not found");
+      }
+
       const updated = this.service.update(id, { ...booking, active: !booking.active });
       res.status(200).json(updated);
     } catch (err) {
@@ -66,17 +70,21 @@ export class BookingController {
 
   delete = (req: Request<{ id: string }>, res: Response): void => {
     const { id } = req.params;
-    const deleted = this.service.delete(id);
 
-    if (!deleted) {
-      res.status(404).json({ error: "Booking not found" });
-      return;
+    try {
+      this.service.delete(id);
+      res.status(204).send();
+    } catch (err) {
+      this.handleError(err, res);
     }
-
-    res.status(204).send();
   };
 
   private handleError(err: unknown, res: Response): void {
+    if (err instanceof NotFoundError) {
+      res.status(404).json({ error: err.message });
+      return;
+    }
+
     if (err instanceof ConflictError) {
       res.status(409).json({ error: err.message });
       return;
