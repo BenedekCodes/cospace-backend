@@ -2,6 +2,7 @@ import { BookingRepository } from "../repositories/booking.repository";
 import { Booking } from "../schemas/booking.schema";
 
 export class ConflictError extends Error {}
+export class NotFoundError extends Error {}
 
 function isValidBooking(body: unknown): body is Booking {
   if (typeof body !== "object" || body === null) return false;
@@ -27,6 +28,15 @@ export class BookingService {
     return this.repository.findById(id);
   }
 
+  getPaginatedShifts(page: number, limit: number): { data: Booking[]; meta: { page: number; limit: number; total: number; totalPages: number } } {
+    const total = this.repository.count();
+    const totalPages = Math.ceil(total / limit);
+    const skip = (page - 1) * limit;
+    const data = this.repository.findPaginated(skip, limit);
+
+    return { data, meta: { page, limit, total, totalPages } };
+  }
+
   create(payload: unknown): Booking {
     if (!isValidBooking(payload)) {
       throw new Error(
@@ -45,7 +55,11 @@ export class BookingService {
     return this.repository.create(payload);
   }
 
-  update(id: string, payload: unknown): Booking | undefined {
+  update(id: string, payload: unknown): Booking {
+    if (!this.repository.findById(id)) {
+      throw new NotFoundError("Booking not found");
+    }
+
     if (!isValidBooking(payload)) {
       throw new Error(
         "Invalid booking payload: id (string), desk (string), floor (number), date (string), and active (boolean) are required"
@@ -57,10 +71,14 @@ export class BookingService {
     }
 
     // id is sourced from the URL, not the body, so a booking can never be renamed via PUT
-    return this.repository.update(id, { ...payload, id });
+    return this.repository.update(id, { ...payload, id }) as Booking;
   }
 
-  delete(id: string): boolean {
-    return this.repository.delete(id);
+  delete(id: string): void {
+    if (!this.repository.findById(id)) {
+      throw new NotFoundError("Booking not found");
+    }
+
+    this.repository.delete(id);
   }
 }
