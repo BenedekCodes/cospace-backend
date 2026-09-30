@@ -1,48 +1,33 @@
-import { Booking } from "../schemas/booking.schema";
+import { prisma } from "../utils/db";
+import { Booking, Prisma } from "../generated/prisma/client";
 
 export class BookingRepository {
-  private bookings: Booking[] = [
-    { id: "1", desk: "A1", floor: 1, date: "2026-09-22", active: true },
-    { id: "2", desk: "B3", floor: 2, date: "2026-09-23", active: false },
-    { id: "3", desk: "C2", floor: 3, date: "2026-09-24", active: true },
-  ];
-
-  findAll(): Booking[] {
-    return [...this.bookings];
+  findAll(): Promise<Booking[]> {
+    return prisma.booking.findMany();
   }
 
-  findById(id: string): Booking | undefined {
-    return this.bookings.find((b) => b.id === id);
+  findById(id: number): Promise<Booking | null> {
+    return prisma.booking.findUnique({ where: { id } });
   }
 
-  findPaginated(skip: number, limit: number): Booking[] {
-    return this.bookings.slice(skip, skip + limit);
+  findPaginated(skip: number, limit: number): Promise<Booking[]> {
+    return prisma.booking.findMany({ skip, take: limit });
   }
 
-  count(): number {
-    return this.bookings.length;
+  count(): Promise<number> {
+    return prisma.booking.count();
   }
 
-  create(booking: Booking): Booking {
-    this.bookings.push(booking);
-    return booking;
+  create(data: Prisma.BookingUncheckedCreateInput): Promise<Booking> {
+    return prisma.booking.create({ data });
   }
 
-  update(id: string, data: Booking): Booking | undefined {
-    const index = this.bookings.findIndex((b) => b.id === id);
-
-    if (index === -1) return undefined;
-
-    this.bookings[index] = data;
-    return data;
+  update(id: number, data: Prisma.BookingUncheckedUpdateInput): Promise<Booking> {
+    return prisma.booking.update({ where: { id }, data });
   }
 
-  delete(id: string): boolean {
-    const index = this.bookings.findIndex((b) => b.id === id);
-
-    if (index === -1) return false;
-
-    this.bookings.splice(index, 1);
+  async delete(id: number): Promise<boolean> {
+    await prisma.booking.delete({ where: { id } });
     return true;
   }
 }

@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 import { auth } from "./middleware/auth";
 import { ForbiddenError } from "./errors";
 import express, { Request, Response } from "express";

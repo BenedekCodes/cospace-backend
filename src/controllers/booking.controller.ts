@@ -1,30 +1,42 @@
 import { NextFunction, Request, Response } from "express";
 import { BookingService } from "../services/booking.service";
-import { NotFoundError } from "../errors";
+import { BadRequestError, NotFoundError } from "../errors";
 import { HttpStatus } from "../constants/httpStatus";
 
 export class BookingController {
   private readonly service = new BookingService();
 
-  // Arrow properties keep `this` bound when passed directly as Express route handlers.
-  getAll = (req: Request, res: Response): void => {
-    var page = parseInt(req.query.page as string, 10) || 1;
-    var limit = parseInt(req.query.limit as string, 10) || 10;
-    // Ensure page and limit are positive integers
-    if (page < 1) page = 1;
-    if (limit < 1) limit = 10;
-    // Cap page size so clients can't force the whole dataset into one response
-    const MAX_LIMIT = 50;
-    if (limit > MAX_LIMIT) limit = MAX_LIMIT;
+  private parseId(raw: string): number {
+    const id = Number(raw);
+    if (!Number.isInteger(id) || id < 1) {
+      throw new BadRequestError("Booking id must be a positive integer");
+    }
+    return id;
+  }
 
-    const result = this.service.getPaginatedShifts(page, limit);
-    res.status(HttpStatus.OK).json(result);
+  // Arrow properties keep `this` bound when passed directly as Express route handlers.
+  getAll = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      var page = parseInt(req.query.page as string, 10) || 1;
+      var limit = parseInt(req.query.limit as string, 10) || 10;
+      // Ensure page and limit are positive integers
+      if (page < 1) page = 1;
+      if (limit < 1) limit = 10;
+      // Cap page size so clients can't force the whole dataset into one response
+      const MAX_LIMIT = 50;
+      if (limit > MAX_LIMIT) limit = MAX_LIMIT;
+
+      const result = await this.service.getPaginatedShifts(page, limit);
+      res.status(HttpStatus.OK).json(result);
+    } catch (err) {
+      next(err);
+    }
   };
 
-  getById = (req: Request<{ id: string }>, res: Response, next: NextFunction): void => {
+  getById = async (req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { id } = req.params;
-      const booking = this.service.findById(id);
+      const id = this.parseId(req.params.id);
+      const booking = await this.service.findById(id);
 
       if (!booking) {
         throw new NotFoundError("Booking not found");
@@ -36,48 +48,50 @@ export class BookingController {
     }
   };
 
-  create = (req: Request<object, unknown, unknown>, res: Response, next: NextFunction): void => {
+  create = async (req: Request<object, unknown, unknown>, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const booking = this.service.create(req.body);
+      const booking = await this.service.create(req.body);
       res.status(HttpStatus.CREATED).json(booking);
     } catch (err) {
       next(err);
     }
   };
 
-  update = (req: Request<{ id: string }, unknown, unknown>, res: Response, next: NextFunction): void => {
-    const { id } = req.params;
-
+  update = async (req: Request<{ id: string }, unknown, unknown>, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const updated = this.service.update(id, req.body);
+      const id = this.parseId(req.params.id);
+      const updated = await this.service.update(id, req.body);
       res.status(HttpStatus.OK).json(updated);
     } catch (err) {
       next(err);
     }
   };
 
-  patch = (req: Request<{ id: string }>, res: Response, next: NextFunction): void => {
-    const { id } = req.params;
-
+  patch = async (req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const booking = this.service.findById(id);
+      const id = this.parseId(req.params.id);
+      const booking = await this.service.findById(id);
 
       if (!booking) {
         throw new NotFoundError("Booking not found");
       }
 
-      const updated = this.service.update(id, { ...booking, active: !booking.active });
+      const updated = await this.service.update(id, {
+        user_id: booking.user_id,
+        desk_id: booking.desk_id,
+        booking_date: booking.booking_date.toISOString().slice(0, 10),
+        active: !booking.active,
+      });
       res.status(HttpStatus.OK).json(updated);
     } catch (err) {
       next(err);
     }
   };
 
-  delete = (req: Request<{ id: string }>, res: Response, next: NextFunction): void => {
-    const { id } = req.params;
-
+  delete = async (req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> => {
     try {
-      this.service.delete(id);
+      const id = this.parseId(req.params.id);
+      await this.service.delete(id);
       res.status(HttpStatus.NO_CONTENT).send();
     } catch (err) {
       next(err);
