@@ -1,3 +1,5 @@
+import { auth } from "./middleware/auth";
+import { ForbiddenError } from "./errors";
 import express, { Request, Response } from "express";
 import bookingsRouter from "./routes/booking.routes";
 import { logger } from "./middleware/logger";
@@ -20,8 +22,11 @@ app.listen(5000, () => {
   console.log("Server running on port 5000");
 });
 
+app.get("/boom-forbidden", () => {
+   throw new ForbiddenError("You do not have permission to access this resource");
+});
+
 process.on("SIGTERM", () => process.exit(0));
 process.on("SIGINT", () => process.exit(0));
 
 export default app;
-
