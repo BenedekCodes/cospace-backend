@@ -1,8 +1,8 @@
 import { BookingRepository } from "../repositories/booking.repository";
 import { Booking } from "../schemas/booking.schema";
+import { BadRequestError, ConflictError, NotFoundError } from "../errors";
 
-export class ConflictError extends Error {}
-export class NotFoundError extends Error {}
+export { ConflictError, NotFoundError };
 
 function isValidBooking(body: unknown): body is Booking {
   if (typeof body !== "object" || body === null) return false;
@@ -39,13 +39,13 @@ export class BookingService {
 
   create(payload: unknown): Booking {
     if (!isValidBooking(payload)) {
-      throw new Error(
+      throw new BadRequestError(
         "Invalid booking payload: id (string), desk (string), floor (number), date (string), and active (boolean) are required"
       );
     }
 
     if (payload.desk.length < 3) {
-      throw new Error("Desk name must be at least 3 characters long");
+      throw new BadRequestError("Desk name must be at least 3 characters long");
     }
 
     if (this.repository.findById(payload.id)) {
@@ -61,13 +61,13 @@ export class BookingService {
     }
 
     if (!isValidBooking(payload)) {
-      throw new Error(
+      throw new BadRequestError(
         "Invalid booking payload: id (string), desk (string), floor (number), date (string), and active (boolean) are required"
       );
     }
 
     if (payload.desk.length < 3) {
-      throw new Error("Desk name must be at least 3 characters long");
+      throw new BadRequestError("Desk name must be at least 3 characters long");
     }
 
     // id is sourced from the URL, not the body, so a booking can never be renamed via PUT

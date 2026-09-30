@@ -1,5 +1,7 @@
-import { Request, Response } from "express";
-import { BookingService, ConflictError, NotFoundError } from "../services/booking.service";
+import { NextFunction, Request, Response } from "express";
+import { BookingService } from "../services/booking.service";
+import { NotFoundError } from "../errors";
+import { HttpStatus } from "../constants/httpStatus";
 
 export class BookingController {
   private readonly service = new BookingService();
@@ -16,42 +18,45 @@ export class BookingController {
     if (limit > MAX_LIMIT) limit = MAX_LIMIT;
 
     const result = this.service.getPaginatedShifts(page, limit);
-    res.status(200).json(result);
+    res.status(HttpStatus.OK).json(result);
   };
 
-  getById = (req: Request<{ id: string }>, res: Response): void => {
-    const { id } = req.params;
-    const booking = this.service.findById(id);
+  getById = (req: Request<{ id: string }>, res: Response, next: NextFunction): void => {
+    try {
+      const { id } = req.params;
+      const booking = this.service.findById(id);
 
-    if (!booking) {
-      res.status(404).json({ error: "Booking not found" });
-      return;
+      if (!booking) {
+        throw new NotFoundError("Booking not found");
+      }
+
+      res.status(HttpStatus.OK).json(booking);
+    } catch (err) {
+      next(err);
     }
-
-    res.status(200).json(booking);
   };
 
-  create = (req: Request<object, unknown, unknown>, res: Response): void => {
+  create = (req: Request<object, unknown, unknown>, res: Response, next: NextFunction): void => {
     try {
       const booking = this.service.create(req.body);
-      res.status(201).json(booking);
+      res.status(HttpStatus.CREATED).json(booking);
     } catch (err) {
-      this.handleError(err, res);
+      next(err);
     }
   };
 
-  update = (req: Request<{ id: string }, unknown, unknown>, res: Response): void => {
+  update = (req: Request<{ id: string }, unknown, unknown>, res: Response, next: NextFunction): void => {
     const { id } = req.params;
 
     try {
       const updated = this.service.update(id, req.body);
-      res.status(200).json(updated);
+      res.status(HttpStatus.OK).json(updated);
     } catch (err) {
-      this.handleError(err, res);
+      next(err);
     }
   };
 
-  patch = (req: Request<{ id: string }>, res: Response): void => {
+  patch = (req: Request<{ id: string }>, res: Response, next: NextFunction): void => {
     const { id } = req.params;
 
     try {
@@ -62,34 +67,20 @@ export class BookingController {
       }
 
       const updated = this.service.update(id, { ...booking, active: !booking.active });
-      res.status(200).json(updated);
+      res.status(HttpStatus.OK).json(updated);
     } catch (err) {
-      this.handleError(err, res);
+      next(err);
     }
   };
 
-  delete = (req: Request<{ id: string }>, res: Response): void => {
+  delete = (req: Request<{ id: string }>, res: Response, next: NextFunction): void => {
     const { id } = req.params;
 
     try {
       this.service.delete(id);
-      res.status(204).send();
+      res.status(HttpStatus.NO_CONTENT).send();
     } catch (err) {
-      this.handleError(err, res);
+      next(err);
     }
   };
-
-  private handleError(err: unknown, res: Response): void {
-    if (err instanceof NotFoundError) {
-      res.status(404).json({ error: err.message });
-      return;
-    }
-
-    if (err instanceof ConflictError) {
-      res.status(409).json({ error: err.message });
-      return;
-    }
-
-    res.status(400).json({ error: err instanceof Error ? err.message : "Invalid request" });
-  }
 }
