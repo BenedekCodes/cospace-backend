@@ -1,84 +1,83 @@
+import { Booking, Prisma } from "../generated/prisma/client";
 import { BookingRepository } from "../repositories/booking.repository";
-import { Booking } from "../schemas/booking.schema";
-import { BadRequestError, ConflictError, NotFoundError } from "../errors";
+import { createBookingSchema } from "../schemas/booking.schema";
+import { ConflictError, NotFoundError } from "../errors";
 
 export { ConflictError, NotFoundError };
-
-function isValidBooking(body: unknown): body is Booking {
-  if (typeof body !== "object" || body === null) return false;
-  const b = body as Record<string, unknown>;
-
-  return (
-    typeof b.id === "string" &&
-    typeof b.desk === "string" &&
-    typeof b.floor === "number" &&
-    typeof b.date === "string" &&
-    typeof b.active === "boolean"
-  );
-}
 
 export class BookingService {
   constructor(private readonly repository: BookingRepository = new BookingRepository()) {}
 
-  findAll(): Booking[] {
+  findAll(): Promise<Booking[]> {
     return this.repository.findAll();
   }
 
-  findById(id: string): Booking | undefined {
+  findById(id: number): Promise<Booking | null> {
     return this.repository.findById(id);
   }
 
-  getPaginatedShifts(page: number, limit: number): { data: Booking[]; meta: { page: number; limit: number; total: number; totalPages: number } } {
-    const total = this.repository.count();
+  async getPaginatedShifts(
+    page: number,
+    limit: number
+  ): Promise<{ data: Booking[]; meta: { page: number; limit: number; total: number; totalPages: number } }> {
+    const total = await this.repository.count();
     const totalPages = Math.ceil(total / limit);
     const skip = (page - 1) * limit;
-    const data = this.repository.findPaginated(skip, limit);
+    const data = await this.repository.findPaginated(skip, limit);
 
     return { data, meta: { page, limit, total, totalPages } };
   }
 
-  create(payload: unknown): Booking {
-    if (!isValidBooking(payload)) {
-      throw new BadRequestError(
-        "Invalid booking payload: id (string), desk (string), floor (number), date (string), and active (boolean) are required"
-      );
-    }
+  async create(payload: unknown): Promise<Booking> {
+    const input = createBookingSchema.parse(payload);
 
-    if (payload.desk.length < 3) {
-      throw new BadRequestError("Desk name must be at least 3 characters long");
+    try {
+      return await this.repository.create({
+        user_id: input.user_id,
+        desk_id: input.desk_id,
+        booking_date: new Date(input.booking_date),
+        active: input.active,
+      });
+    } catch (err) {
+      throw this.mapPrismaError(err);
     }
-
-    if (this.repository.findById(payload.id)) {
-      throw new ConflictError("Booking with this id already exists");
-    }
-
-    return this.repository.create(payload);
   }
 
-  update(id: string, payload: unknown): Booking {
-    if (!this.repository.findById(id)) {
+  async update(id: number, payload: unknown): Promise<Booking> {
+    const existing = await this.repository.findById(id);
+    if (!existing) {
       throw new NotFoundError("Booking not found");
     }
 
-    if (!isValidBooking(payload)) {
-      throw new BadRequestError(
-        "Invalid booking payload: id (string), desk (string), floor (number), date (string), and active (boolean) are required"
-      );
-    }
+    const input = createBookingSchema.parse(payload);
 
-    if (payload.desk.length < 3) {
-      throw new BadRequestError("Desk name must be at least 3 characters long");
+    try {
+      // id is sourced from the URL, not the body, so a booking can never be renamed via PUT
+      return await this.repository.update(id, {
+        user_id: input.user_id,
+        desk_id: input.desk_id,
+        booking_date: new Date(input.booking_date),
+        active: input.active,
+      });
+    } catch (err) {
+      throw this.mapPrismaError(err);
     }
-
-    // id is sourced from the URL, not the body, so a booking can never be renamed via PUT
-    return this.repository.update(id, { ...payload, id }) as Booking;
   }
 
-  delete(id: string): void {
-    if (!this.repository.findById(id)) {
+  async delete(id: number): Promise<void> {
+    const existing = await this.repository.findById(id);
+    if (!existing) {
       throw new NotFoundError("Booking not found");
     }
 
-    this.repository.delete(id);
+    await this.repository.delete(id);
+  }
+
+  // Prisma's unique-constraint violation (desk already booked for that date) surfaces as our ConflictError shape
+  private mapPrismaError(err: unknown): unknown {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return new ConflictError("A booking already exists for this desk and date");
+    }
+    return err;
   }
 }
