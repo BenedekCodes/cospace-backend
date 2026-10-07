@@ -1,5 +1,5 @@
 import { Booking, Prisma } from "../generated/prisma/client";
-import { BookingRepository } from "../repositories/booking.repository";
+import { BookingRepository, type BookingWithDesk } from "../repositories/booking.repository";
 import { createBookingSchema } from "../schemas/booking.schema";
 import { ConflictError, NotFoundError } from "../errors";
 
@@ -19,7 +19,7 @@ export class BookingService {
   async getPaginatedShifts(
     page: number,
     limit: number
-  ): Promise<{ data: Booking[]; meta: { page: number; limit: number; total: number; totalPages: number } }> {
+  ): Promise<{ data: BookingWithDesk[]; meta: { page: number; limit: number; total: number; totalPages: number } }> {
     const total = await this.repository.count();
     const totalPages = Math.ceil(total / limit);
     const skip = (page - 1) * limit;

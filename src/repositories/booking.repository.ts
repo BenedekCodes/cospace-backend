@@ -1,6 +1,8 @@
 import { prisma } from "../utils/db";
 import { Booking, Prisma } from "../generated/prisma/client";
 
+export type BookingWithDesk = Prisma.BookingGetPayload<{ include: { desk: true } }>;
+
 export class BookingRepository {
   findAll(): Promise<Booking[]> {
     return prisma.booking.findMany();
@@ -10,8 +12,8 @@ export class BookingRepository {
     return prisma.booking.findUnique({ where: { id } });
   }
 
-  findPaginated(skip: number, limit: number): Promise<Booking[]> {
-    return prisma.booking.findMany({ skip, take: limit });
+  findPaginated(skip: number, limit: number): Promise<BookingWithDesk[]> {
+    return prisma.booking.findMany({ skip, take: limit, include: { desk: true } });
   }
 
   count(): Promise<number> {
