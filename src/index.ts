@@ -5,6 +5,7 @@ import { ForbiddenError } from "./errors";
 import express, { Request, Response } from "express";
 import cors from "cors";
 import bookingsRouter from "./routes/booking.routes";
+import desksRouter from "./routes/desk.routes";
 import { logger } from "./middleware/logger";
 import { errorHandler } from "./middleware/errorHandler";
 import { HttpStatus } from "./constants/httpStatus";
@@ -19,6 +20,7 @@ app.get("/", (req: Request, res: Response) => {
 });
 
 app.use("/bookings", bookingsRouter);
+app.use("/desks", desksRouter);
 
 app.use(errorHandler);
 
