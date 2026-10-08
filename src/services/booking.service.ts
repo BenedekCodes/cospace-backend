@@ -1,7 +1,7 @@
 import { Booking, Prisma } from "../generated/prisma/client";
-import { BookingRepository } from "../repositories/booking.repository";
+import { BookingRepository, type BookingWithDesk } from "../repositories/booking.repository";
 import { createBookingSchema } from "../schemas/booking.schema";
-import { ConflictError, NotFoundError } from "../errors";
+import { BadRequestError, ConflictError, NotFoundError } from "../errors";
 
 export { ConflictError, NotFoundError };
 
@@ -19,7 +19,7 @@ export class BookingService {
   async getPaginatedShifts(
     page: number,
     limit: number
-  ): Promise<{ data: Booking[]; meta: { page: number; limit: number; total: number; totalPages: number } }> {
+  ): Promise<{ data: BookingWithDesk[]; meta: { page: number; limit: number; total: number; totalPages: number } }> {
     const total = await this.repository.count();
     const totalPages = Math.ceil(total / limit);
     const skip = (page - 1) * limit;
@@ -77,6 +77,10 @@ export class BookingService {
   private mapPrismaError(err: unknown): unknown {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
       return new ConflictError("A booking already exists for this desk and date");
+    }
+    // Foreign key violation: the user_id or desk_id does not exist.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003") {
+      return new BadRequestError("The user or desk for this booking does not exist");
     }
     return err;
   }
